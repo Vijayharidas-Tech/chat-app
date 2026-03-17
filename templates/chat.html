@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Chat with {{ other_user.username }}{% endblock %}
+
+{% block extra_head %}
+<script>
+    window.CHAT_CONFIG = {
+        otherUsername: "{{ other_user.username }}",
+        currentUsername: "{{ request.user.username }}",
+        wsScheme: window.location.protocol === "https:" ? "wss" : "ws",
+        wsPath: "/ws/chat/{{ other_user.username }}/"
+    };
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-7">
+        <div class="card chat-card">
+
+            <!-- HEADER -->
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="fw-semibold">Chat with {{ other_user.username }}</div>
+                    <div class="small text-light opacity-75">
+                        Messages are delivered instantly.
+                    </div>
+                </div>
+            </div>
+
+            <!-- CHAT BODY -->
+            <div class="card-body chat-log">
+                <div id="typing-indicator" class="small text-muted mb-1" style="display:none;">
+                    {{ other_user.username }} is typing...
+                </div>
+
+                <div id="chat-log">
+                {% for msg in messages %}
+                    <div class="message-row {% if msg.sender == request.user %}sent{% else %}received{% endif %}">
+                        <div class="message-bubble">
+
+                            <div class="message-text">{{ msg.message }}</div>
+
+                            <div class="message-meta d-flex align-items-center justify-content-end gap-1">
+                                {% if msg.sender == request.user %}
+                                    <form method="post"
+                                          action="{% url 'chat:message_delete' msg.id %}"
+                                          style="display:inline;">
+                                        {% csrf_token %}
+                                        <button type="submit"
+                                                class="btn btn-sm btn-link text-danger p-0 me-1">
+                                            🗑
+                                        </button>
+                                    </form>
+                                {% endif %}
+
+                                <small>{{ msg.timestamp|date:"H:i" }}</small>
+
+                                {% if msg.sender == request.user %}
+                                    <small class="ms-1">
+                                        {% if msg.is_read %}✓✓{% else %}✓{% endif %}
+                                    </small>
+                                {% endif %}
+                            </div>
+
+                        </div>
+                    </div>
+                {% endfor %}
+                </div>
+            </div>
+
+            <!-- ✅ FIXED FOOTER -->
+            <div class="card-footer">
+                <div class="small text-muted mb-1">
+                    Press Enter to send, Shift+Enter for a new line.
+                </div>
+
+                <!-- ✅ FORM ADDED -->
+                <form id="chat-form">
+                    <div class="d-flex align-items-end gap-2">
+
+                        <textarea id="chat-message-input"
+                                  class="form-control"
+                                  rows="1"
+                                  style="resize: none;"
+                                  autocomplete="off"
+                                  placeholder="Type a message..."></textarea>
+
+                        <button class="btn btn-primary"
+                                id="chat-message-submit"
+                                type="submit">
+                            Send
+                        </button>
+
+                    </div>
+                </form>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/chat.js' %}"></script>
+{% endblock %}

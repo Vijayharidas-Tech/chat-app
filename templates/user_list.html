@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% load static %}
+{% load dict_extras %}
+
+{% block title %}Users{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <h2 class="mb-3">Start a chat</h2>
+        <p class="text-muted mb-3">Select a user below to open a private conversation.</p>
+        <div class="list-group">
+            {% for u in users %}
+                <a href="{% url 'chat:chat' u.username %}"
+                   class="list-group-item list-group-item-action d-flex justify-content-between align-items-center user-list-item">
+                    <div class="fw-semibold">{{ u.username }}</div>
+                    <div class="d-flex align-items-center gap-2">
+                        {% with unread=unread_map|get_item:u.id %}
+                            {% if unread %}
+                                <span class="badge bg-danger rounded-pill">{{ unread }}</span>
+                            {% endif %}
+                        {% endwith %}
+                        <span class="text-muted small">
+                            <span class="status-dot {% if u.is_online %}online{% else %}offline{% endif %}"></span>
+                            {% if u.is_online %}Online{% else %}Offline{% endif %}
+                        </span>
+                    </div>
+                </a>
+            {% empty %}
+                <p class="text-muted">No other users yet. Create another account to start chatting.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
