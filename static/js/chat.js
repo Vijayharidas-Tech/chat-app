@@ -8,6 +8,7 @@
   const form = document.getElementById("chat-form");
   const sendBtn = document.getElementById("chat-message-submit");
 
+  // ✅ Scroll to bottom
   function scrollToBottom() {
     if (chatLog) {
       chatLog.scrollTop = chatLog.scrollHeight;
@@ -16,6 +17,20 @@
 
   scrollToBottom();
 
+  // ✅ Safe time formatter (FIXES INVALID DATE)
+  function formatTime(timestamp) {
+    if (!timestamp) return "";
+
+    const date = new Date(timestamp);
+    if (isNaN(date.getTime())) return "";
+
+    return date.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  // ✅ WebSocket URL
   const wsUrl =
     cfg.wsScheme +
     "://" +
@@ -26,24 +41,34 @@
 
   let typingTimeoutId = null;
 
+  // ✅ Handle incoming messages
   socket.onmessage = function (e) {
     const data = JSON.parse(e.data);
 
-    // Typing indicator events
+    console.log("WS Data:", data); // DEBUG
+
+    // 🔹 Typing event
     if (data.type === "typing") {
       if (data.sender === cfg.otherUsername && typingEl) {
         typingEl.style.display = "block";
+
         if (typingTimeoutId) {
           clearTimeout(typingTimeoutId);
         }
+
         typingTimeoutId = setTimeout(() => {
           typingEl.style.display = "none";
         }, 1500);
       }
       return;
     }
+
+    // 🔹 Ignore invalid messages
+    if (!data.message) return;
+
     const isOwn = data.sender === cfg.currentUsername;
 
+    // ✅ Create message row
     const row = document.createElement("div");
     row.className = "message-row " + (isOwn ? "sent" : "received");
 
@@ -55,14 +80,14 @@
     text.textContent = data.message;
 
     const meta = document.createElement("div");
-    meta.className = "message-meta";
+    meta.className = "message-meta d-flex align-items-center justify-content-end gap-1";
+
+    // ✅ SAFE TIME (FIX)
     const time = document.createElement("small");
-    time.textContent = new Date(data.timestamp).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    time.textContent = formatTime(data.timestamp);
     meta.appendChild(time);
 
+    // ✅ Read status
     if (isOwn) {
       const status = document.createElement("small");
       status.className = "ms-1";
@@ -74,6 +99,7 @@
     bubble.appendChild(meta);
     row.appendChild(bubble);
     chatLog.appendChild(row);
+
     scrollToBottom();
   };
 
@@ -81,8 +107,10 @@
     console.warn("WebSocket closed.");
   };
 
+  // ✅ Send message
   function sendCurrentMessage() {
     const message = (messageInput.value || "").trim();
+
     if (!message) return;
     if (socket.readyState !== WebSocket.OPEN) return;
 
@@ -93,24 +121,31 @@
         receiver: cfg.otherUsername,
       })
     );
+
     messageInput.value = "";
   }
 
+  // ✅ Form submit
   form.addEventListener("submit", function (e) {
     e.preventDefault();
     sendCurrentMessage();
   });
 
+  // ✅ Button click
   if (sendBtn) {
     sendBtn.addEventListener("click", function () {
       sendCurrentMessage();
     });
   }
 
+  // ✅ Typing event + Enter handling
   if (messageInput) {
     let lastTypingSent = 0;
+
     messageInput.addEventListener("keydown", function (e) {
       const now = Date.now();
+
+      // 🔹 Send typing event (throttle)
       if (socket.readyState === WebSocket.OPEN && now - lastTypingSent > 500) {
         socket.send(
           JSON.stringify({
@@ -121,6 +156,7 @@
         lastTypingSent = now;
       }
 
+      // 🔹 Enter to send
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         sendCurrentMessage();
@@ -128,4 +164,3 @@
     });
   }
 })();
-
