@@ -17,7 +17,7 @@
 
   scrollToBottom();
 
-  // ✅ Safe time formatter (FIXES INVALID DATE)
+  // ✅ Safe time formatter (NO INVALID DATE)
   function formatTime(timestamp) {
     if (!timestamp) return "";
 
@@ -41,7 +41,7 @@
 
   let typingTimeoutId = null;
 
-  // ✅ Handle incoming messages
+  // ✅ HANDLE INCOMING EVENTS
   socket.onmessage = function (e) {
     const data = JSON.parse(e.data);
 
@@ -52,23 +52,29 @@
       if (data.sender === cfg.otherUsername && typingEl) {
         typingEl.style.display = "block";
 
-        if (typingTimeoutId) {
-          clearTimeout(typingTimeoutId);
-        }
+        if (typingTimeoutId) clearTimeout(typingTimeoutId);
 
         typingTimeoutId = setTimeout(() => {
           typingEl.style.display = "none";
         }, 1500);
       }
+      return; // ✅ STOP HERE
+    }
+
+    // 🚨 ONLY HANDLE REAL CHAT MESSAGES
+    if (data.type !== "chat_message") {
       return;
     }
 
-    // 🔹 Ignore invalid messages
-    if (!data.message) return;
+    // 🚨 SAFETY CHECK (prevents Invalid Date)
+    if (!data.message || !data.timestamp) {
+      console.warn("Skipped invalid message:", data);
+      return;
+    }
 
     const isOwn = data.sender === cfg.currentUsername;
 
-    // ✅ Create message row
+    // ✅ Create UI
     const row = document.createElement("div");
     row.className = "message-row " + (isOwn ? "sent" : "received");
 
@@ -80,9 +86,10 @@
     text.textContent = data.message;
 
     const meta = document.createElement("div");
-    meta.className = "message-meta d-flex align-items-center justify-content-end gap-1";
+    meta.className =
+      "message-meta d-flex align-items-center justify-content-end gap-1";
 
-    // ✅ SAFE TIME (FIX)
+    // ✅ SAFE TIME (FIXED)
     const time = document.createElement("small");
     time.textContent = formatTime(data.timestamp);
     meta.appendChild(time);
@@ -138,14 +145,14 @@
     });
   }
 
-  // ✅ Typing event + Enter handling
+  // ✅ Typing + Enter handling
   if (messageInput) {
     let lastTypingSent = 0;
 
     messageInput.addEventListener("keydown", function (e) {
       const now = Date.now();
 
-      // 🔹 Send typing event (throttle)
+      // 🔹 Typing event (throttle)
       if (socket.readyState === WebSocket.OPEN && now - lastTypingSent > 500) {
         socket.send(
           JSON.stringify({
